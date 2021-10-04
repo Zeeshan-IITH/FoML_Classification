@@ -1,0 +1,441 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.impute import KNNImputer
+import seaborn as sb
+from sklearn import metrics
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import uniform, truncnorm, randint
+get_ipython().system('pip install imbalanced-learn')
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import cross_val_score
+from imblearn.over_sampling import SMOTE
+
+
+# In[2]:
+
+
+data=pd.read_csv("train_input.csv")
+print(data.shape)
+
+
+# In[3]:
+
+
+for i in data.columns:
+    print(i, len(data[i].unique()))
+
+dups = data.duplicated()
+# report if there are any duplicates
+print(dups.any())
+
+
+# In[4]:
+
+
+test=pd.read_csv("test_input.csv")
+test.head()
+
+
+# In[5]:
+
+
+data.loc[data['Target Variable (Discrete)']==0].shape[0]
+print(data.shape)
+
+
+# In[6]:
+
+
+for i in set(data['Target Variable (Discrete)']):
+    print("the class",i,"has",data.loc[data['Target Variable (Discrete)']==i].shape[0],"samples")
+
+
+# In[7]:
+
+
+data.loc[data['Target Variable (Discrete)']==2]['Feature 15']
+
+
+# In[8]:
+
+
+classes=set(data['Target Variable (Discrete)'])
+for i in classes:
+    print(i)
+    print(data.loc[data['Target Variable (Discrete)']==i].shape)
+    print(data.loc[data['Target Variable (Discrete)']==i].isnull().sum())
+print(classes)
+print(set(data['Target Variable (Discrete)']))
+
+
+# In[9]:
+
+
+column_name=list(data.columns)
+
+
+# In[10]:
+
+
+NaN_col=[]
+for i in column_name[0:24]:
+    if(data[i].isnull().sum()>0):
+        #print(i,X[i].isnull().sum())
+        #print(X[i].dtype)
+        NaN_col.append(i)
+print(NaN_col)
+
+
+# In[11]:
+
+
+del data['Feature 16']
+del data['Feature 17']
+#del X['Feature 18']
+del column_name[15]
+del column_name[16]
+#del column_name[17]
+del column_name[-1]
+
+
+# In[12]:
+
+
+del test['Feature 16']
+del test['Feature 17']
+#el test_new['Feature 18']
+
+
+# In[13]:
+
+
+imputer = KNNImputer(n_neighbors=5,weights='uniform',metric='nan_euclidean')
+#from sklearn.impute import SimpleImputer
+#imputer = SimpleImputer(missing_values= np.nan, strategy='mean')
+imputer.fit(data)
+data_new=pd.DataFrame(imputer.transform(data),columns=data.columns)
+
+
+# In[ ]:
+
+
+
+
+
+# In[14]:
+
+
+data_new.drop(data.loc[data['Target Variable (Discrete)']==10].index, axis=0, inplace=True)
+data_new.drop(data.loc[data['Target Variable (Discrete)']==11].index, axis=0, inplace=True)
+data_new.drop(data.loc[data['Target Variable (Discrete)']==12].index, axis=0, inplace=True)
+data_new.drop(data.loc[data['Target Variable (Discrete)']==16].index, axis=0, inplace=True)
+data_new.drop(data.loc[data['Target Variable (Discrete)']==17].index, axis=0, inplace=True)
+
+
+# In[15]:
+
+
+imputer.fit(test)
+test_new=pd.DataFrame(imputer.transform(test),columns=test.columns)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[16]:
+
+
+column_name=list(data_new.columns)
+X=data_new[column_name[0:22]]
+Y=data_new[column_name[-1]]
+
+
+# In[17]:
+
+
+X.head()
+
+
+# In[18]:
+
+
+Y=Y.astype(int)
+
+
+# In[19]:
+
+
+set(data_new['Target Variable (Discrete)'])
+
+
+# In[20]:
+
+
+X.head()
+print(X.shape)
+
+
+# In[21]:
+
+
+oversample = SMOTE(sampling_strategy='auto',k_neighbors=1)
+X, Y = oversample.fit_resample(X, Y)
+
+
+# In[22]:
+
+
+for i in set(Y):
+    print("the class",i,"has",X.loc[Y==i].shape[0],"samples")
+
+
+# In[23]:
+
+
+set(Y)
+
+
+# In[29]:
+
+
+corr=X.corr().abs()
+print(corr)
+sb.heatmap(corr)
+
+
+# In[ ]:
+
+
+
+
+
+# In[30]:
+
+
+# Selecting the upper triangular matrix of correlation matrix
+upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(np.bool))
+
+# Find features with greater correlation 
+to_drop = [column for column in upper.columns if any(upper[column] > 0.92)]
+print(to_drop)
+
+# Dropping the redundant features 
+X.drop(to_drop, axis=1, inplace=True)
+#less_sampled_data.drop(to_drop, axis=1, inplace=True)
+
+
+# In[31]:
+
+
+test_new.drop(to_drop, axis=1, inplace=True)
+
+
+# In[32]:
+
+
+column_name=X.columns
+column_name.shape
+
+
+# In[33]:
+
+
+for col in test_new.columns:
+    test_new[col]=(test_new[col]-test_new[col].min())/(test_new[col].max()-test_new[col].min())
+    #less_sampled_data[col]=(less_sampled_data[col]-less_sampled_data[col].min())/(less_sampled_data[col].max()-less_sampled_data[col].min())
+
+
+# In[34]:
+
+
+for col in X.columns:
+    X[col]=(X[col]-X[col].min())/(X[col].max()-X[col].min())
+
+
+# In[35]:
+
+
+print(X.min())
+print(X.max())
+
+
+# In[36]:
+
+
+X.isnull().sum()
+
+
+# In[37]:
+
+
+X_train,X_valid,Y_train,Y_valid=train_test_split(X,Y,test_size=0.25,random_state=42)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[38]:
+
+
+X_train.shape
+
+
+# In[ ]:
+
+
+
+
+
+# In[39]:
+
+
+X_train.shape
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[40]:
+
+
+Y_train.shape
+
+
+# In[41]:
+
+
+rf_model = RandomForestClassifier()
+model_params = {'max_depth':range(6,15),'n_estimators':range(80,230,10),
+                'max_features':randint(12,19),'criterion':['gini','entropy'],
+                'bootstrap':[True,False],'min_samples_leaf':randint(1,8),
+}
+
+
+# In[42]:
+
+
+
+#def hypertuning (rdm_est,rdm_params,no_iter,X,y):
+    #randomsearch=RandomizedSearchCV(rdm_est,n_jobs=-1, param_distributions=rdm_params, n_iter=no_iter, cv=5, random_state=42)
+    #randomsearch.fit(X,y)
+   # params=randomsearch.best_params_
+  #  score=randomsearch.best_score_
+ #   return params,score
+#rf_parameters,rf_score=hypertuning(rf_model,model_params,100,X_train,Y_train)
+
+
+# In[43]:
+
+
+#rf_parameters
+
+
+# In[44]:
+
+
+#rf_score
+
+
+# In[45]:
+
+
+model=RandomForestClassifier(bootstrap= False,
+ criterion='entropy',
+ max_depth= 13,
+ max_features= 12,
+ min_samples_leaf= 4,n_estimators= 80)
+model.fit(X_train,Y_train)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+scores = cross_val_score(model, X_valid, Y_valid, cv=5)
+scores
+
+
+# In[50]:
+
+
+# generating the predictions using the best model we got using randomized search
+predictions = model.predict(X_valid)
+print(predictions)
+
+print("Accuracy:",metrics.accuracy_score(predictions, Y_valid))
+
+set(predictions)
+
+predictions.shape
+
+
+# In[53]:
+
+
+sample= pd.read_csv('iith_foml_2020_sample.csv')
+print(sample)
+test_pred=pd.DataFrame(columns=sample.columns)
+test_pred['Id']=range(1,len(test)+1)
+test_pred['Category']=model.predict(test_new)
+test_pred['Category']=test_pred['Category'].astype(int)
+test_pred.to_csv('test_output.csv',index=False)
+print(test_pred.shape)
+print(test_pred.head(10))
+print(test_pred.columns)
+
